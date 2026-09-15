@@ -34,6 +34,7 @@ Edit the `:root` block at the top of the file.
 | `--hb-unread-style` | `corner` | `corner` shows unread as a ringed dot in the icon's top-right, `hidden` shows nothing, `bar` keeps Discord's pill under the icon. Mentions always get Discord's red number badge |
 | `--hb-unread-color` | `var(--text-default)` | Colour of the corner dot |
 | `--hb-selected-edge` | `top` | `top` or `bottom`: which edge of the icon the selected-server bar sits on |
+| `--hb-mention-markers` | `none` | `flex` shows Discord's "new mentions further along" markers at the ends of the bar |
 | `--hb-user-panel` | `bar` | `bar` puts the user panel at the right end of the server bar, `sidebar` leaves it under the channel list |
 | `--hb-user-panel-width` | `320px` | Width of the user panel when it sits in the bar |
 

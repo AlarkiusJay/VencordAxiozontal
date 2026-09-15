@@ -63,6 +63,10 @@
   /* Which edge of the icon the selected-server bar sits on.  top | bottom */
   --hb-selected-edge: top;
 
+  /* Discord's "new mentions further along" markers at the ends of the
+     bar (they overlap the Discover button).  none | flex */
+  --hb-mention-markers: none;
+
   /* Where the user panel (avatar, mic, headphones, settings) lives.
      bar     = right end of the server bar
      sidebar = Discord's usual spot under the channel list */
@@ -427,7 +431,7 @@
   bottom: 0;
   width: auto !important;
   height: 100%;
-  display: flex;
+  display: var(--hb-mention-markers);
   align-items: center;
   padding: 0 8px !important;
 }
