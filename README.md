@@ -6,7 +6,7 @@ Written from scratch. Unlike the older HorizontalServerList approach, it does no
 
 Works with BetterDiscord, Vencord, Vesktop and Replugged. One file, no `@import`.
 
-This is an inspiration From Gibbu's Horizontal Theme made from scratch. Not a direct fork, but inspired. 
+This is an inspiration From Gibbu's Horizontal Theme but re-made from scratch. Not a direct fork, but inspired. 
 Updates will be made consistently. 
 
 
