@@ -234,6 +234,13 @@
 #app-mount nav[class*="guilds_"] [class*="scroller_"] > [hidden] {
   display: none !important;
 }
+/* The DM and server stacks are marked data-full-width, which Discord
+   styles as width:100%. Fine in a column, but in a row the DM stack
+   would claim the whole bar the moment an unread DM appears in it. */
+#app-mount nav[class*="guilds_"] [class*="scroller_"] > [class*="stack_"][data-full-width="true"] {
+  width: auto !important;
+  margin: 0 !important;
+}
 
 /* Each server entry: was a fixed-width row, now a fixed-height column. */
 #app-mount nav[class*="guilds_"] [class*="listItem_"] {
