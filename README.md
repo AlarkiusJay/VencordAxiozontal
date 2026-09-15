@@ -1,3 +1,5 @@
+<img width="1915" height="366" alt="srcnsht-png-16-26" src="https://github.com/user-attachments/assets/251e1fc8-0919-44b1-a7db-2f0088a6e083" />
+
 # Axiozontal
 
 A Discord theme that moves the server list into a horizontal bar across the top (or bottom) of the window.
