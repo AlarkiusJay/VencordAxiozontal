@@ -57,7 +57,7 @@ Two automated checks back that up:
 
 ## Versions
 
-Each release is tagged and records the Discord build it was verified against.
+Each release is tagged and records the Discord build it was verified against. Bumping `@version` in the theme header is all it takes: a workflow validates the file, then cuts the matching tag and GitHub Release with the theme attached.
 
 | Theme | Discord build | Notes |
 |---|---|---|

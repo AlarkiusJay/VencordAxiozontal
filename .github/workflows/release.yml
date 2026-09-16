@@ -1,0 +1,131 @@
+name: Release
+
+# Cuts a tagged GitHub Release whenever @version in the theme changes.
+#
+# Two audiences are served by different channels: Vencord users pointing at
+# the raw main URL get every push immediately, while BetterDiscord store users
+# only get an update when the listing is resubmitted there. A release gives
+# that submission a clean tag and commit to point at, and gives everyone else
+# a stable URL to pin if a newer build misbehaves.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Axiozontal.theme.css'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need tag history for the changelog
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Never cut a release from a file that would fail the push gate.
+      - name: Validate before releasing
+        run: node .github/scripts/validate.mjs
+
+      - name: Read theme metadata
+        id: meta
+        run: |
+          node -e "
+            const fs = require('fs');
+            const css = fs.readFileSync('Axiozontal.theme.css', 'utf8');
+            const version = css.match(/@version\s+(\d+\.\d+\.\d+)/)?.[1];
+            if (!version) { console.error('No @version in the theme header'); process.exit(1); }
+            let build = 'unknown';
+            try {
+              build = JSON.parse(
+                fs.readFileSync('.github/scripts/discord-baseline.json', 'utf8')
+              ).discordBuild || 'unknown';
+            } catch {}
+            fs.appendFileSync(
+              process.env.GITHUB_OUTPUT,
+              \`version=\${version}\nbuild=\${build}\n\`
+            );
+            console.log(\`Theme version \${version}, baseline Discord build \${build}\`);
+          "
+
+      - name: Has this version already been released?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.meta.outputs.version }}" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "v${{ steps.meta.outputs.version }} is already released; nothing to do."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release notes
+        if: steps.check.outputs.new == 'true'
+        id: notes
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD: ${{ steps.meta.outputs.build }}
+        run: |
+          # Newest release tag that is not the commit being released, so a
+          # re-run or a backfill still produces a meaningful changelog.
+          head_sha=$(git rev-parse HEAD)
+          previous=""
+          while read -r tag; do
+            [ -z "$tag" ] && continue
+            if [ "$(git rev-list -n 1 "$tag")" != "$head_sha" ]; then
+              previous="$tag"
+              break
+            fi
+          done < <(git tag -l 'v*' --sort=-v:refname)
+          echo "Previous release tag: ${previous:-none}"
+          {
+            echo "Verified against Discord build \`${BUILD:0:8}\`."
+            echo
+            echo "### Install"
+            echo
+            echo "Drop \`Axiozontal.theme.css\` into your client's theme folder, or pin this exact release in Vencord's online themes:"
+            echo
+            echo '```'
+            echo "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/v${VERSION}/Axiozontal.theme.css"
+            echo '```'
+            echo
+            echo "Use \`main\` instead of \`v${VERSION}\` to always track the newest build."
+            echo
+            echo "### Changes"
+            echo
+            if [ -n "$previous" ]; then
+              changes=$(git log --no-merges --pretty='- %s' "${previous}..HEAD" -- \
+                Axiozontal.theme.css README.md .github | head -n 40)
+              if [ -n "$changes" ]; then
+                echo "$changes"
+                echo
+                echo "**Full diff:** \`${previous}...v${VERSION}\`"
+              else
+                echo "- Housekeeping only; no changes to the theme since ${previous}."
+              fi
+            else
+              echo "- First tagged release."
+            fi
+          } > notes.md
+          echo "Release notes:"; cat notes.md
+
+      - name: Create the release
+        if: steps.check.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" \
+            --title "Axiozontal v${VERSION}" \
+            --notes-file notes.md \
+            --target "${GITHUB_SHA}" \
+            Axiozontal.theme.css
+          echo "::notice::Released v${VERSION}"
