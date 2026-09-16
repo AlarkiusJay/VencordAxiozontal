@@ -1,0 +1,34 @@
+name: Validate theme
+
+# People load Axiozontal straight from this repository, including through
+# Vencord's online-themes field, so a broken commit on main reaches them
+# immediately. This gate runs on every push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate Axiozontal.theme.css
+        run: node .github/scripts/validate.mjs
+
+      - name: Confirm the raw file is what clients will load
+        run: |
+          # Clients fetch this file verbatim; make sure nothing else is needed.
+          if grep -qE '^\s*@import' Axiozontal.theme.css; then
+            echo "::error::Theme uses @import. It must stay a single self-contained file."
+            exit 1
+          fi
+          size=$(wc -c < Axiozontal.theme.css)
+          echo "Theme is ${size} bytes, self-contained."

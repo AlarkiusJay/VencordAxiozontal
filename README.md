@@ -50,6 +50,28 @@ Edit the `:root` block at the top of the file.
 
 Discord renames its hashed class names every few weeks. Every selector in this theme uses a `[class*="name_"]` wildcard on the stable prefix, so a hash change like `guilds__5e434` to `guilds_a1b2c3` does not break it. `reference/selectors.md` records the hashes the theme was written against, so if Discord renames a prefix outright there is a starting point for the fix.
 
+Two automated checks back that up:
+
+- **Validate theme** runs on every push. It parses the CSS, checks the addon metadata header, and rejects any hashed Discord class name that creeps back in.
+- **Discord canary** runs every Monday. It downloads the CSS the live Discord web client is serving and confirms that all 47 hooks this theme relies on, every class prefix, CSS variable and grid area, are still there. If one disappears it opens an issue, so a break is usually known before anyone has to report it.
+
+## Versions
+
+Each release is tagged and records the Discord build it was verified against.
+
+| Theme | Discord build | Notes |
+|---|---|---|
+| v0.2.0 | `fd720496` (desktop 1.0.9257) | User panel in the bar, corner unread dots, horizontal drag-and-drop, folder spacing |
+| v0.1.0 | `fd720496` (desktop 1.0.9257) | First release |
+
+`main` is always the newest version. If an update ever misbehaves for you, pin a specific release instead by pointing at its tag:
+
+```
+https://raw.githubusercontent.com/AlarkiusJay/VencordAxiozontal/v0.1.0/Axiozontal.theme.css
+```
+
+Swap `v0.1.0` for whichever tag you want, or `main` to go back to the latest.
+
 ## Plugin support
 
 - **Vencord BetterFolders**: its folder sidebar becomes a second full-width row directly under the bar (above it in bottom mode). The row only exists while a folder is open.
@@ -61,4 +83,4 @@ Discord renames its hashed class names every few weeks. Every selector in this t
 
 ## Verified
 
-Checked live in Discord desktop 1.0.9257 with Vencord on 2026-09-14: top and bottom layouts, selected and unread pills, folder previews, BetterFolders row opening and closing, mention-scroll markers, and the user panel.
+Checked live in Discord desktop 1.0.9257 with Vencord: top and bottom layouts, selected and unread markers, folder previews, BetterFolders row opening and closing, drag-and-drop reordering on both rows, and the user panel.

@@ -1,0 +1,95 @@
+name: Discord canary
+
+# Discord rehashes its class names constantly, which is harmless here because
+# every selector matches on the prefix. What does break the theme is a renamed
+# prefix, a dropped CSS variable, or a reshuffled app grid. This job downloads
+# the CSS the live Discord web client loads and checks that every hook the
+# theme relies on still exists, then opens an issue if one has vanished.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays, 06:00 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Axiozontal.theme.css'
+      - '.github/scripts/check-discord.mjs'
+      - '.github/scripts/discord-baseline.json'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check theme hooks against live Discord
+        id: check
+        run: |
+          set +e
+          node .github/scripts/check-discord.mjs 2>&1 | tee canary.log
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Open an issue if hooks have gone missing
+        if: steps.check.outputs.status != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('canary.log', 'utf8');
+            const label = 'discord-change';
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: label,
+            });
+
+            const body = [
+              'The weekly canary found that Discord no longer ships hooks the theme depends on.',
+              'The bar is probably broken, or about to be, on the current client.',
+              '',
+              '```',
+              log.trim(),
+              '```',
+              '',
+              'Fix against the live client, then refresh the baseline:',
+              '',
+              '```bash',
+              'node .github/scripts/check-discord.mjs --update',
+              '```',
+              '',
+              '`reference/selectors.md` records the DOM these hooks were written against.',
+            ].join('\n');
+
+            if (open.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: open[0].number,
+                body,
+              });
+              core.notice(`Commented on existing issue #${open[0].number}`);
+            } else {
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Discord changed something the theme relies on',
+                labels: [label],
+                body,
+              });
+              core.notice(`Opened issue #${issue.number}`);
+            }
+
+      - name: Fail the run so the red X is visible
+        if: steps.check.outputs.status != '0'
+        run: exit 1
