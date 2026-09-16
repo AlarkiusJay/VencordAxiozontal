@@ -48,7 +48,15 @@ Edit the `:root` block at the top of the file.
 
 ## How it survives Discord updates
 
-Discord renames its hashed class names every few weeks. Every selector in this theme uses a `[class*="name_"]` wildcard on the stable prefix, so a hash change like `guilds__5e434` to `guilds_a1b2c3` does not break it. `reference/selectors.md` records the hashes the theme was written against, so if Discord renames a prefix outright there is a starting point for the fix.
+Discord renames its hashed class names every few weeks, so the only stable part of a class is its prefix. The theme matches on that prefix rather than the hash, which means a change like `guilds__5e434` to `guilds_a1b2c3` does not break anything.
+
+It tries to earn each of those matches rather than scatter them:
+
+- Rules are grouped under one scoped parent and nested, so a hook is written once instead of being repeated on every rule.
+- Attributes Discord already exposes are preferred over class matching where they exist, including `data-direction`, `data-full-width`, `data-collapsed` and `data-fullscreen`.
+- Everything is scoped to the server list `<nav>` or the app shell, so no selector is loose in the page.
+
+`reference/selectors.md` records the DOM the theme was written against, so if Discord renames a prefix outright there is a starting point for the fix. `test/` holds a harness that renders a mock of that DOM and diffs computed styles between two versions of the stylesheet, so selector changes can be proven not to alter rendering.
 
 Two automated checks back that up:
 
@@ -61,6 +69,7 @@ Each release is tagged and records the Discord build it was verified against. Bu
 
 | Theme | Discord build | Notes |
 |---|---|---|
+| v0.3.0 | `fd720496` (desktop 1.0.9257) | Selector rewrite: 70% fewer wildcard matches, same rendering |
 | v0.2.0 | `fd720496` (desktop 1.0.9257) | User panel in the bar, corner unread dots, horizontal drag-and-drop, folder spacing |
 | v0.1.0 | `fd720496` (desktop 1.0.9257) | First release |
 

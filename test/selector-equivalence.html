@@ -1,0 +1,111 @@
+<!doctype html><meta charset="utf-8"><title>selector equivalence</title>
+<style>
+:root{
+  --custom-guild-list-width:72px; --custom-guild-sidebar-width:268px;
+  --custom-app-top-bar-height:32px; --custom-guild-list-padding:16px;
+  --custom-panels-spacing:8px; --custom-app-panels-height:58px;
+  --guildbar-avatar-size:40px; --guildbar-folder-size:48px;
+  --space-xs:8px; --space-8:8px; --app-frame-border:#333;
+  --background-base-lowest:#111; --text-default:#fff;
+}
+</style>
+<pre id="out">running…</pre>
+<div id="app-mount">
+ <div class="base__5e434" data-fullscreen="false">
+  <div class="content__5e434">
+   <div class="sidebar__5e434" data-collapsed="false">
+    <nav class="wrapper_ef3116 guilds__5e434" aria-label="Servers sidebar">
+     <div class="unreadMentionsIndicatorTop_ef3116"><div class="bar__3b95d unreadMentionsBar_ef3116"></div></div>
+     <div class="tree_ef3116">
+      <div class="stack_dbd263 scroller_ef3116" data-direction="vertical">
+       <div class="tutorialContainer__1f388"><div class="listItem__650eb"></div></div>
+       <div class="stack_dbd263" data-full-width="true" data-direction="vertical" aria-label="Direct Messages" hidden></div>
+       <div class="stack_dbd263" data-full-width="true" data-direction="vertical" aria-label="Servers">
+        <div class="listItem__650eb" id="item-plain">
+         <div class="wrapper__58105 overlay__58105" id="overlay">
+          <span class="item__58105" id="pill-unread"></span>
+         </div>
+         <div class="wrapper_d144f8" id="dragwrap">
+          <div class="target_d144f8 dragOver_d144f8" id="target"></div>
+          <div class="centerTarget_d144f8 dragOver_d144f8" id="centertarget"></div>
+         </div>
+        </div>
+        <div class="listItem__650eb" id="item-sel">
+         <div class="wrapper__58105 overlay__58105">
+          <span class="item__58105 visible__58105 selected__58105" id="pill-selected"></span>
+         </div>
+        </div>
+        <div class="folderGroup__48112 isExpanded__48112" id="folder-open">
+         <span class="folderGroupBackground__48112" id="folder-bg"></span>
+         <div class="listItem__650eb"><div class="folderHeader__48112 folderHeaderSmall__48112" id="folder-head"></div></div>
+         <ul class="stack_dbd263 folderGuildsList__48112" id="folder-list" data-direction="vertical">
+          <div class="listItem__650eb" id="folder-first"></div>
+          <div class="listItem__650eb"></div>
+         </ul>
+         <div class="folderEndWrapper_d144f8 wrapperOver_d144f8" id="folderend"></div>
+        </div>
+        <div class="folderGroup__48112" id="folder-closed">
+         <ul class="stack_dbd263 folderGuildsList__48112" id="folder-closed-list"></ul>
+         <div class="folderTarget_d144f8" id="foldertarget"><div class="dragOver_d144f8" id="ft-over"></div></div>
+        </div>
+        <div class="listItem__650eb"><div class="guildSeparator__252b6" id="sep"></div></div>
+       </div>
+       <div class="bottomRailNotifCenterButton_ef3116" id="bottomrail"></div>
+      </div>
+      <div class="unreadMentionsIndicatorBottom_ef3116 unreadMentionsFixedFooter_ef3116" id="mentions-bottom"></div>
+     </div>
+    </nav>
+    <div class="sidebarList__5e434 sidebarListRounded__5e434" id="channels"></div>
+    <section class="panels__5e434" id="panels"></section>
+   </div>
+   <div class="page__5e434"></div>
+  </div>
+ </div>
+</div>
+<script type="module">
+const PROPS = ['display','flex-direction','flex','width','height','position','top','bottom',
+ 'inset-inline-start','inset-inline-end','margin','padding','rotate','translate','transform',
+ 'align-items','justify-content','grid-area','grid-template-areas','grid-template-rows',
+ 'grid-template-columns','z-index','overflow','column-gap','border-radius','background-color',
+ 'box-shadow','border-top','border-bottom','pointer-events','scrollbar-width','mask-image'];
+
+async function load(url){
+  const s = new CSSStyleSheet();
+  await s.replace(await (await fetch(url)).text());
+  return s;
+}
+function snapshot(){
+  const map = {};
+  for (const el of document.querySelectorAll('#app-mount, #app-mount *')) {
+    const cs = getComputedStyle(el);
+    const key = el.id || (el.tagName + '.' + [...el.classList].join('.'));
+    const rec = {};
+    for (const p of PROPS) rec[p] = cs.getPropertyValue(p);
+    // pseudo-elements the theme styles
+    for (const pe of ['::before','::after']) {
+      const pcs = getComputedStyle(el, pe);
+      rec[pe] = ['content','display','width','height','top','bottom','inset-inline-start','inset-inline-end','margin','background-color']
+        .map(p => p + '=' + pcs.getPropertyValue(p)).join('|');
+    }
+    map[key] = rec;
+  }
+  return map;
+}
+const oldS = await load('old.css'), newS = await load('new.css');
+document.adoptedStyleSheets = [oldS];
+const A = snapshot();
+document.adoptedStyleSheets = [newS];
+const B = snapshot();
+
+const diffs = [];
+for (const key of Object.keys(A)) {
+  for (const p of Object.keys(A[key])) {
+    const a = A[key][p], b = B[key][p];
+    if (a !== b) diffs.push(`${key}  ${p}\n    old: ${a}\n    new: ${b}`);
+  }
+}
+document.getElementById('out').textContent =
+  `elements compared: ${Object.keys(A).length}\nproperties each: ${PROPS.length + 2}\n\n` +
+  (diffs.length ? `DIFFERENCES (${diffs.length}):\n\n` + diffs.join('\n\n')
+                : 'IDENTICAL — every element computes the same styles under both versions.');
+</script>

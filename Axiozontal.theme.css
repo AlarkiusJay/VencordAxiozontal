@@ -1,7 +1,7 @@
 /**
  * @name Axiozontal
  * @author AlarkiusEJ
- * @version 0.2.0
+ * @version 0.3.0
  * @description Moves the Discord server list into a horizontal bar at the top (or bottom) of the window. Built from scratch on Discord's own grid layout: no rotation hacks, so tooltips, drag-to-reorder, folders and scrolling keep working.
  * @source https://github.com/AlarkiusJay/VencordAxiozontal
  */
@@ -9,7 +9,7 @@
 /* =====================================================================
    HOW IT WORKS
    ---------------------------------------------------------------------
-   Discord's app shell (.base_) is a CSS grid with named areas:
+   Discord's app shell is a CSS grid with named areas:
        "titleBar   titleBar     titleBar"
        "guildsList notice       notice"
        "guildsList channelsList page"
@@ -17,9 +17,14 @@
    This theme just redefines the grid so guildsList gets its own
    full-width row, then re-flows the list from a column to a row.
 
-   All selectors use [class*="name_"] wildcards so they survive
-   Discord's periodic class-hash changes. See reference/ for the
-   hashed names this was written against.
+   ON SELECTORS
+   Discord rehashes its class names on most builds, so the stable part
+   of a class is its prefix. Rules are grouped under a single scoped
+   parent and nested, so each hook is written once rather than repeated
+   on every rule, and attributes Discord exposes (data-direction,
+   data-full-width, data-collapsed, data-fullscreen) are preferred over
+   class matching wherever they exist. reference/selectors.md records
+   the DOM this was written against.
    ===================================================================== */
 
 /* =====================================================================
@@ -56,7 +61,7 @@
      red number badge in the bottom-right corner).
      corner = small ringed dot in the top-right corner of the icon
      hidden = no marker
-     bar    = Discord's pill, flattened under the icon */
+     bar    = Discord's pill, flattened against the icon edge */
   --hb-unread-style: corner;
   --hb-unread-color: var(--text-default);
 
@@ -78,106 +83,160 @@
 
 /* =====================================================================
    1. APP SHELL GRID
+   The betterFoldersSidebar row belongs to Vencord's BetterFolders
+   plugin, which renders expanded folders in a second server list. The
+   row is sized `auto`, so it collapses to nothing without the plugin.
    ===================================================================== */
-/* The betterFoldersSidebar row is for Vencord's BetterFolders plugin,
-   which renders expanded folders in a second server list. The row is
-   sized `auto`, so it collapses to nothing when the plugin is absent. */
-#app-mount [class*="base_"] {
-  grid-template-areas:
-    "titleBar   titleBar     titleBar"
-    "guildsList guildsList   guildsList"
-    "betterFoldersSidebar betterFoldersSidebar betterFoldersSidebar"
-    "notice     notice       notice"
-    "channelsList channelsList page" !important;
-  grid-template-columns:
-    [start] 0px [guildsEnd] min-content [channelsEnd] 1fr [end] !important;
-  grid-template-rows:
-    [top] var(--custom-app-top-bar-height) [titleBarEnd]
-    var(--hb-bar-height) [guildsListEnd]
-    auto [betterFoldersEnd]
-    min-content [noticeEnd]
-    1fr [end] !important;
-}
+#app-mount {
+  & [class*="base_"] {
+    grid-template-areas:
+      "titleBar   titleBar     titleBar"
+      "guildsList guildsList   guildsList"
+      "betterFoldersSidebar betterFoldersSidebar betterFoldersSidebar"
+      "notice     notice       notice"
+      "channelsList channelsList page" !important;
+    grid-template-columns:
+      [start] 0px [guildsEnd] min-content [channelsEnd] 1fr [end] !important;
+    grid-template-rows:
+      [top] var(--custom-app-top-bar-height) [titleBarEnd]
+      var(--hb-bar-height) [guildsListEnd]
+      auto [betterFoldersEnd]
+      min-content [noticeEnd]
+      1fr [end] !important;
 
-#app-mount [class*="base_"][data-fullscreen="true"] {
-  grid-template-rows:
-    [top] min-content [titleBarEnd]
-    var(--hb-bar-height) [guildsListEnd]
-    auto [betterFoldersEnd]
-    min-content [noticeEnd]
-    1fr [end] !important;
-}
+    /* Fullscreen drops the title-bar row. */
+    &[data-fullscreen="true"] {
+      grid-template-rows:
+        [top] min-content [titleBarEnd]
+        var(--hb-bar-height) [guildsListEnd]
+        auto [betterFoldersEnd]
+        min-content [noticeEnd]
+        1fr [end] !important;
+    }
 
-/* BetterFolders sidebar: the plugin gives it an inline width of 72px. */
-#app-mount .vc-betterFolders-sidebar {
-  width: auto !important;
-  height: var(--hb-bar-height);
-  border-top: 1px solid var(--app-frame-border);
-}
-
-/* The sidebar is a subgrid that used to span the server + channel
-   columns. It must now span the full width so the server row fits. */
-#app-mount [class*="sidebar_"]:has(nav[class*="guilds_"]) {
-  grid-column: start / end !important;
-  width: auto !important;
-  overflow: visible !important;
-}
-
-/* Channel list takes the width it was sharing with the server column. */
-#app-mount [class*="sidebar_"]:has(nav[class*="guilds_"]) [class*="sidebarList_"] {
-  width: var(--hb-channel-list-width) !important;
-  border-inline-start: none;
-}
-
-/* The user panel (avatar, mute, settings) and an 8px footer strip are
-   absolutely positioned at the bottom of the sidebar. The sidebar is now
-   full width, so pin them back to the channel list's width. */
-#app-mount [class*="sidebar_"]:has(nav[class*="guilds_"]) > [class*="panels_"] {
-  width: calc(var(--hb-channel-list-width) - var(--custom-panels-spacing, 8px) * 2) !important;
-}
-#app-mount [class*="sidebar_"]:has(nav[class*="guilds_"])::after {
-  inset-inline: 0 auto;
-  width: var(--hb-channel-list-width);
-}
-
-/* User panel in the bar: make it a grid item in the same cell as the
-   server bar, hugging the right end, and reserve room for it. */
-@container style(--hb-user-panel: bar) {
-  #app-mount [class*="sidebar_"]:has(nav[class*="guilds_"]) > [class*="panels_"] {
-    position: relative !important;
-    inset: auto !important;
-    bottom: auto !important;
-    grid-area: guildsList;
-    justify-self: end;
-    align-self: center;
-    width: var(--hb-user-panel-width) !important;
-    margin-inline-end: var(--custom-panels-spacing, 8px);
-    z-index: 11;
+    /* Bottom variant: the bar and the folder row move below the page. */
+    @container style(--hb-position: bottom) {
+      & {
+        grid-template-areas:
+          "titleBar     titleBar     titleBar"
+          "notice       notice       notice"
+          "channelsList channelsList page"
+          "betterFoldersSidebar betterFoldersSidebar betterFoldersSidebar"
+          "guildsList   guildsList   guildsList" !important;
+        grid-template-rows:
+          [top] var(--custom-app-top-bar-height) [titleBarEnd]
+          min-content [noticeEnd]
+          1fr [pageEnd]
+          auto [betterFoldersEnd]
+          var(--hb-bar-height) [end] !important;
+      }
+      &[data-fullscreen="true"] {
+        grid-template-rows:
+          [top] min-content [titleBarEnd]
+          min-content [noticeEnd]
+          1fr [pageEnd]
+          auto [betterFoldersEnd]
+          var(--hb-bar-height) [end] !important;
+      }
+    }
   }
-  #app-mount nav[class*="guilds_"]:not(.vc-betterFolders-sidebar nav) [class*="scroller_"] {
-    padding-inline-end: calc(var(--hb-user-panel-width) + var(--custom-panels-spacing, 8px) * 2 + var(--hb-edge-fade)) !important;
-  }
-  #app-mount nav[class*="guilds_"]:not(.vc-betterFolders-sidebar nav) [class*="unreadMentionsIndicatorBottom_"] {
-    inset-inline-end: calc(var(--hb-user-panel-width) + var(--custom-panels-spacing, 8px) * 2);
-  }
-  /* The channel list no longer needs to leave room at the bottom.
-     Discord sets --custom-app-panels-height inline on <body> and pads
-     the channel nav by it; zeroing it on #app-mount removes the gap. */
-  #app-mount {
-    --custom-app-panels-height: 0px;
-  }
-  #app-mount [class*="sidebar_"]:has(nav[class*="guilds_"])::after {
-    display: none;
-  }
-}
 
-/* Collapsed channel list (Discord's own collapse button). */
-#app-mount [class*="sidebar_"][data-collapsed="true"]:has(nav[class*="guilds_"]) [class*="sidebarList_"] {
-  width: 4px !important;
+  /* BetterFolders row. The plugin sets an inline width of 72px. */
+  & .vc-betterFolders-sidebar {
+    width: auto !important;
+    height: var(--hb-bar-height);
+    border-top: 1px solid var(--app-frame-border);
+
+    @container style(--hb-position: bottom) {
+      & {
+        border-top: none;
+        border-bottom: 1px solid var(--app-frame-border);
+      }
+    }
+  }
+
+  /* The sidebar is a subgrid that used to span the server and channel
+     columns. It must now span the full width so the server row fits. */
+  & [class*="sidebar_"]:has(nav[class*="guilds_"]) {
+    grid-column: start / end !important;
+    width: auto !important;
+    overflow: visible !important;
+
+    /* Channel list takes the width it shared with the server column. */
+    & [class*="sidebarList_"] {
+      width: var(--hb-channel-list-width) !important;
+      border-inline-start: none;
+    }
+    &[data-collapsed="true"] [class*="sidebarList_"] {
+      width: 4px !important;
+    }
+
+    /* The user panel and an 8px footer strip are absolutely positioned
+       at the bottom of the sidebar, which now spans the whole window,
+       so pin them back to the channel list's width. */
+    & > [class*="panels_"] {
+      width: calc(var(--hb-channel-list-width) - var(--custom-panels-spacing, 8px) * 2) !important;
+    }
+    &::after {
+      inset-inline: 0 auto;
+      width: var(--hb-channel-list-width);
+    }
+
+    /* User panel in the bar: promote it into the server row and hug
+       the right end. */
+    @container style(--hb-user-panel: bar) {
+      & > [class*="panels_"] {
+        position: relative !important;
+        inset: auto !important;
+        bottom: auto !important;
+        grid-area: guildsList;
+        justify-self: end;
+        align-self: center;
+        width: var(--hb-user-panel-width) !important;
+        margin-inline-end: var(--custom-panels-spacing, 8px);
+        z-index: 11;
+      }
+      &::after {
+        display: none;
+      }
+    }
+
+    /* Panel left in the sidebar, bar at the bottom: lift both clear of
+       the bar, and of the folder row when it is open. */
+    @container style(--hb-position: bottom) {
+      @container style(--hb-user-panel: sidebar) {
+        & > [class*="panels_"] {
+          bottom: calc(var(--custom-panels-spacing, 8px) + var(--hb-bar-height)) !important;
+        }
+        &::after {
+          bottom: var(--hb-bar-height);
+        }
+        &:has(.vc-betterFolders-sidebar) {
+          & > [class*="panels_"] {
+            bottom: calc(var(--custom-panels-spacing, 8px) + var(--hb-bar-height) * 2) !important;
+          }
+          &::after {
+            bottom: calc(var(--hb-bar-height) * 2);
+          }
+        }
+      }
+    }
+  }
+
+  /* Discord measures the user panel and pads the channel list by that
+     height. With the panel in the bar there is nothing to make room
+     for, so zero it out. */
+  @container style(--hb-user-panel: bar) {
+    & {
+      --custom-app-panels-height: 0px;
+    }
+  }
 }
 
 /* =====================================================================
-   2. THE SERVER BAR ITSELF
+   2. THE SERVER BAR
+   Everything below is scoped to the server list <nav>, which is the
+   only place these hooks are allowed to match.
    ===================================================================== */
 #app-mount nav[class*="guilds_"] {
   grid-area: guildsList !important;
@@ -191,330 +250,312 @@
   mask:
     linear-gradient(90deg, #000, transparent) right / var(--hb-edge-fade) 100% no-repeat,
     linear-gradient(#000, #000) left / calc(100% - var(--hb-edge-fade) + 1px) 100% no-repeat;
-}
 
-#app-mount nav[class*="guilds_"] [class*="tree_"] {
-  flex-direction: row;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-}
-
-/* Scrollable strip of servers. */
-#app-mount nav[class*="guilds_"] [class*="scroller_"] {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex: 1 1 auto;
-  height: 100%;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  /* extra end padding keeps the last buttons out of the edge fade */
-  padding: 0 calc(var(--custom-guild-list-padding, 16px) + var(--hb-edge-fade)) 0 var(--custom-guild-list-padding, 16px) !important;
-  scrollbar-width: none;
-}
-#app-mount nav[class*="guilds_"] [class*="scroller_"]::-webkit-scrollbar {
-  display: none;
-}
-
-/* Everything Discord stacks vertically inside the scroller goes sideways. */
-#app-mount nav[class*="guilds_"] [class*="scroller_"] > *,
-#app-mount nav[class*="guilds_"] [class*="stack_"][data-direction="vertical"],
-#app-mount nav[class*="guilds_"] [class*="stack_"][data-direction="vertical-reverse"] {
-  display: flex;
-  flex-direction: row !important;
-  align-items: center;
-  justify-content: var(--hb-align);
-  column-gap: var(--hb-item-gap);
-  height: 100%;
-}
-
-/* Discord keeps an empty, hidden "Direct Messages" stack in the list.
-   The display:flex above would resurrect it, so hide it outright. */
-#app-mount nav[class*="guilds_"] [class*="scroller_"] > [hidden] {
-  display: none !important;
-}
-/* The DM and server stacks are marked data-full-width, which Discord
-   styles as width:100%. Fine in a column, but in a row the DM stack
-   would claim the whole bar the moment an unread DM appears in it. */
-#app-mount nav[class*="guilds_"] [class*="scroller_"] > [class*="stack_"][data-full-width="true"] {
-  width: auto !important;
-  margin: 0 !important;
-}
-
-/* Each server entry: was a fixed-width row, now a fixed-height column. */
-#app-mount nav[class*="guilds_"] [class*="listItem_"] {
-  width: auto !important;
-  height: 100%;
-  margin: 0 !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-/* Separator between DMs / servers / footer buttons. */
-#app-mount nav[class*="guilds_"] [class*="guildSeparator_"] {
-  width: 1px !important;
-  height: 32px !important;
-}
-
-/* =====================================================================
-   3. SELECTED / UNREAD PILL
-   Discord draws the pill as an 8px-wide <span> whose height is animated
-   inline (8px unread, 20px hover, 40px selected) inside an overlay
-   wrapper on the left edge of each entry. Centre the overlay over the
-   icon, then rotate the span flat and slide it to the chosen edge.
-   ===================================================================== */
-#app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] {
-  position: absolute;
-  inset: 0;
-  width: auto !important;
-  height: auto !important;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 3;                   /* paint above neighbouring icons */
-}
-#app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] > [class*="item_"] {
-  position: static;
-  margin: 0;
-  transform: none !important;   /* Discord nudges it 4px left; undo that */
-  border-radius: 4px;
-  /* rotate about the centre, then pull up by half its own height so the
-     flat bar sits 4px below the top edge, 8px tall */
-  translate: 0 calc(-50% + 12px);
-  rotate: 90deg;
-}
-@container style(--hb-selected-edge: bottom) {
-  #app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] {
-    align-items: flex-end;
-  }
-  #app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] > [class*="item_"] {
-    translate: 0 calc(50% - 12px);
-    rotate: -90deg;
-  }
-}
-/* No markers at all on the BetterFolders row. */
-#app-mount .vc-betterFolders-sidebar nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] {
-  display: none;
-}
-/* Plain unread marker. The selected bar is always shown. */
-@container style(--hb-unread-style: hidden) {
-  #app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] > [class*="item_"]:not([class*="selected_"]) {
+  /* Hide the bar entirely during a fullscreen video or stream. */
+  :fullscreen & {
     display: none;
   }
-}
-@container style(--hb-unread-style: corner) {
-  #app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="overlay_"] > [class*="item_"]:not([class*="selected_"]) {
-    position: absolute;
-    top: calc((100% - var(--guildbar-avatar-size)) / 2 - 2px);
-    inset-inline-end: -2px;
-    width: 10px !important;
-    height: 10px !important;
-    border-radius: 50%;
-    translate: none;
-    rotate: none;
-    background-color: var(--hb-unread-color);
-    box-shadow: 0 0 0 2px var(--background-base-lowest);
+
+  & [class*="tree_"] {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    height: 100%;
   }
-}
 
-/* =====================================================================
-   4. FOLDERS
-   ===================================================================== */
-#app-mount nav[class*="guilds_"] [class*="folderGroup_"] {
-  width: auto !important;
-  height: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
+  /* ---------------------------------------------------------------
+     Scrollable strip of servers
+     --------------------------------------------------------------- */
+  & [class*="scroller_"] {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 1 1 auto;
+    height: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    /* extra end padding keeps the last buttons out of the edge fade */
+    padding: 0 calc(var(--custom-guild-list-padding, 16px) + var(--hb-edge-fade)) 0 var(--custom-guild-list-padding, 16px) !important;
+    scrollbar-width: none;
 
-#app-mount nav[class*="guilds_"] [class*="folderGroupBackground_"] {
-  top: 50%;
-  bottom: auto;
-  translate: 0 -50%;
-  inset-inline: calc((var(--guildbar-folder-size) - var(--guildbar-avatar-size)) / -2);
-  width: auto !important;
-  height: var(--guildbar-folder-size);
-}
-
-#app-mount nav[class*="guilds_"] [class*="folderGuildsList_"] {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  column-gap: var(--hb-item-gap);
-  height: auto !important;
-  width: auto;
-}
-#app-mount nav[class*="guilds_"] [class*="folderGuildsList_"] > :first-child {
-  margin-top: 0 !important;
-  margin-inline-start: var(--space-xs, 8px);
-}
-
-/* Breathing room between one expanded group and the next. */
-#app-mount nav[class*="guilds_"] [class*="folderGroup_"][class*="isExpanded_"] {
-  margin-inline: var(--hb-folder-group-gap);
-}
-#app-mount nav[class*="guilds_"] [class*="folderGroup_"][class*="isExpanded_"]:first-child {
-  margin-inline-start: 0;
-}
-#app-mount nav[class*="guilds_"] [class*="folderGroup_"][class*="isExpanded_"]:last-child {
-  margin-inline-end: 0;
-}
-/* Pad the expanded group's background so it hugs the icons evenly. */
-#app-mount nav[class*="guilds_"] [class*="folderGroup_"][class*="isExpanded_"] [class*="folderGroupBackground_"] {
-  inset-inline: calc(var(--hb-folder-group-gap) * -0.5);
-}
-#app-mount nav[class*="guilds_"] [class*="folderGroup_"]:not([class*="isExpanded_"]) [class*="folderGuildsList_"] {
-  display: none;
-}
-
-#app-mount nav[class*="guilds_"] [class*="folderHeaderSmall_"] {
-  margin: 0 calc((var(--guildbar-avatar-size) - var(--guildbar-folder-size)) / 2);
-}
-
-/* =====================================================================
-   4b. DRAG AND DROP
-   Discord overlays each entry with two drop zones stacked vertically:
-   the first half means "insert before", the second means "drop onto"
-   (make / join a folder). Turn the stack sideways and redraw the
-   insert indicator as a vertical line in the gap.
-   ===================================================================== */
-#app-mount nav[class*="guilds_"] [class*="listItem_"] > [class*="wrapper_"]:has(> [class*="target_"]) {
-  flex-direction: row;
-  top: 0;
-  bottom: 0;
-  inset-inline: -16px -4px;
-}
-/* "insert before" line: vertical, in the gap to the left of the icon */
-#app-mount nav[class*="guilds_"] [class*="target_"][class*="dragOver_"]::before {
-  width: 4px;
-  height: auto;
-  top: 16px;
-  bottom: 16px;
-  inset-inline: 10px auto;
-}
-/* "drop onto" circle: centred on the icon */
-#app-mount nav[class*="guilds_"] [class*="centerTarget_"][class*="dragOver_"]::before {
-  top: 0;
-  bottom: 0;
-  margin: auto 0;
-  inset-inline-start: 28px;
-}
-/* End-of-folder drop slot */
-#app-mount nav[class*="guilds_"] [class*="folderEndWrapper_"] {
-  width: 0;
-  height: auto;
-}
-#app-mount nav[class*="guilds_"] [class*="folderEndWrapper_"][class*="wrapperOver_"] {
-  width: 24px;
-  height: auto;
-}
-#app-mount nav[class*="guilds_"] [class*="folderTarget_"] {
-  flex-direction: row;
-  width: 24px;
-  height: auto;
-  top: 0;
-  bottom: 0;
-  inset-inline: -24px auto;
-}
-#app-mount nav[class*="guilds_"] [class*="folderTarget_"] [class*="dragOver_"]::before {
-  top: 16px;
-  bottom: 16px;
-  inset-inline: auto 0;
-}
-
-/* =====================================================================
-   5. UNREAD-MENTION ARROWS (the "more unread that way" markers)
-   ===================================================================== */
-#app-mount nav[class*="guilds_"] [class*="unreadMentionsIndicatorTop_"],
-#app-mount nav[class*="guilds_"] [class*="unreadMentionsIndicatorBottom_"] {
-  top: 0;
-  bottom: 0;
-  width: auto !important;
-  height: 100%;
-  display: var(--hb-mention-markers);
-  align-items: center;
-  padding: 0 8px !important;
-}
-#app-mount nav[class*="guilds_"] [class*="unreadMentionsIndicatorTop_"] {
-  inset-inline: 0 auto;
-}
-#app-mount nav[class*="guilds_"] [class*="unreadMentionsIndicatorBottom_"] {
-  inset-inline: auto 0;
-}
-#app-mount nav[class*="guilds_"] [class*="unreadMentionsFixedFooter_"] {
-  bottom: auto;
-  inset-inline-end: 0;
-}
-
-/* =====================================================================
-   6. FOOTER BUTTONS (Discover, Add a Server, notification center)
-   ===================================================================== */
-#app-mount nav[class*="guilds_"] [class*="bottomRailNotifCenterButton_"] {
-  padding: 0 12px 0 8px;
-}
-#app-mount nav[class*="guilds_"] [class*="bottomRailNotifCenterButton_"]::before {
-  display: none;
-}
-
-/* =====================================================================
-   7. FULLSCREEN (video / stream): hide the bar entirely
-   ===================================================================== */
-:fullscreen #app-mount nav[class*="guilds_"] {
-  display: none;
-}
-
-/* =====================================================================
-   8. BOTTOM VARIANT   (set  --hb-position: bottom  in USER SETTINGS)
-   ===================================================================== */
-@container style(--hb-position: bottom) {
-  #app-mount [class*="base_"] {
-    grid-template-areas:
-      "titleBar     titleBar     titleBar"
-      "notice       notice       notice"
-      "channelsList channelsList page"
-      "betterFoldersSidebar betterFoldersSidebar betterFoldersSidebar"
-      "guildsList   guildsList   guildsList" !important;
-    grid-template-rows:
-      [top] var(--custom-app-top-bar-height) [titleBarEnd]
-      min-content [noticeEnd]
-      1fr [pageEnd]
-      auto [betterFoldersEnd]
-      var(--hb-bar-height) [end] !important;
-  }
-  #app-mount [class*="base_"][data-fullscreen="true"] {
-    grid-template-rows:
-      [top] min-content [titleBarEnd]
-      min-content [noticeEnd]
-      1fr [pageEnd]
-      auto [betterFoldersEnd]
-      var(--hb-bar-height) [end] !important;
-  }
-  #app-mount .vc-betterFolders-sidebar {
-    border-top: none;
-    border-bottom: 1px solid var(--app-frame-border);
-  }
-  /* Lift the user panel and footer strip above the bar (and above the
-     BetterFolders row when that is open). Only when the panel lives in
-     the sidebar. */
-  @container style(--hb-user-panel: sidebar) {
-    #app-mount [class*="sidebar_"]:has(nav[class*="guilds_"]) > [class*="panels_"] {
-      bottom: calc(var(--custom-panels-spacing, 8px) + var(--hb-bar-height)) !important;
+    &::-webkit-scrollbar {
+      display: none;
     }
-    #app-mount [class*="sidebar_"]:has(nav[class*="guilds_"])::after {
-      bottom: var(--hb-bar-height);
+
+    /* Discord keeps an empty, hidden Direct Messages group in the list.
+       The rule above would resurrect it, so hide it outright. */
+    & > [hidden] {
+      display: none !important;
     }
-    #app-mount [class*="sidebar_"]:has(.vc-betterFolders-sidebar) > [class*="panels_"] {
-      bottom: calc(var(--custom-panels-spacing, 8px) + var(--hb-bar-height) * 2) !important;
+
+    /* The DM and server groups are marked data-full-width, which
+       Discord styles as width:100%. Fine in a column, but in a row the
+       DM group would claim the whole bar the moment an unread DM
+       appeared in it. */
+    & > [data-full-width="true"] {
+      width: auto !important;
+      margin: 0 !important;
     }
-    #app-mount [class*="sidebar_"]:has(.vc-betterFolders-sidebar)::after {
-      bottom: calc(var(--hb-bar-height) * 2);
+  }
+
+  /* Everything Discord stacks vertically goes sideways: the scroller
+     itself, every group inside it, and each group's direct children. */
+  & [class*="scroller_"] > *,
+  & [data-direction="vertical"],
+  & [data-direction="vertical-reverse"] {
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: var(--hb-align);
+    column-gap: var(--hb-item-gap);
+    height: 100%;
+  }
+
+  /* Reserve room at the end of the strip for the user panel. */
+  @container style(--hb-user-panel: bar) {
+    &:not(.vc-betterFolders-sidebar nav) [class*="scroller_"] {
+      padding-inline-end: calc(var(--hb-user-panel-width) + var(--custom-panels-spacing, 8px) * 2 + var(--hb-edge-fade)) !important;
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     Server entries: were fixed-width rows, now fixed-height columns
+     --------------------------------------------------------------- */
+  & [class*="listItem_"] {
+    width: auto !important;
+    height: 100%;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+
+    /* -------------------------------------------------------------
+       Selected / unread marker
+       Discord draws it as an 8px-wide span whose height is animated
+       inline (8px unread, 20px hover, 40px selected) inside an overlay
+       on the left edge of the entry. Centre the overlay over the icon,
+       then rotate the span flat against the chosen edge.
+       ------------------------------------------------------------- */
+    & > [class*="overlay_"] {
+      position: absolute;
+      inset: 0;
+      width: auto !important;
+      height: auto !important;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 3; /* paint above neighbouring icons */
+
+      /* No markers at all on the BetterFolders row. */
+      .vc-betterFolders-sidebar & {
+        display: none;
+      }
+
+      @container style(--hb-selected-edge: bottom) {
+        & {
+          align-items: flex-end;
+        }
+      }
+
+      & > [class*="item_"] {
+        position: static;
+        margin: 0;
+        transform: none !important; /* Discord nudges it 4px left */
+        border-radius: 4px;
+        /* rotate about the centre, then pull up by half its own height
+           so the flat bar sits 4px below the top edge, 8px tall */
+        translate: 0 calc(-50% + 12px);
+        rotate: 90deg;
+
+        @container style(--hb-selected-edge: bottom) {
+          & {
+            translate: 0 calc(50% - 12px);
+            rotate: -90deg;
+          }
+        }
+
+        /* Plain unread marker. The selected bar is always shown. */
+        &:not([class*="selected_"]) {
+          @container style(--hb-unread-style: hidden) {
+            & {
+              display: none;
+            }
+          }
+          @container style(--hb-unread-style: corner) {
+            & {
+              position: absolute;
+              top: calc((100% - var(--guildbar-avatar-size)) / 2 - 2px);
+              inset-inline-end: -2px;
+              width: 10px !important;
+              height: 10px !important;
+              border-radius: 50%;
+              translate: none;
+              rotate: none;
+              background-color: var(--hb-unread-color);
+              box-shadow: 0 0 0 2px var(--background-base-lowest);
+            }
+          }
+        }
+      }
+    }
+
+    /* Drag-and-drop zones: Discord stacks two of them vertically over
+       each entry, the first meaning "insert before" and the second
+       "drop onto" (make or join a folder). Turn the stack sideways. */
+    & > :has(> [class*="target_"]) {
+      flex-direction: row;
+      top: 0;
+      bottom: 0;
+      inset-inline: -16px -4px;
+    }
+  }
+
+  /* Separator between DMs, servers and the footer buttons. */
+  & [class*="guildSeparator_"] {
+    width: 1px !important;
+    height: 32px !important;
+  }
+
+  /* ---------------------------------------------------------------
+     Folders
+     --------------------------------------------------------------- */
+  & [class*="folderGroup_"] {
+    width: auto !important;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    & [class*="folderGroupBackground_"] {
+      top: 50%;
+      bottom: auto;
+      translate: 0 -50%;
+      inset-inline: calc((var(--guildbar-folder-size) - var(--guildbar-avatar-size)) / -2);
+      width: auto !important;
+      height: var(--guildbar-folder-size);
+    }
+
+    & [class*="folderGuildsList_"] {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      column-gap: var(--hb-item-gap);
+      height: auto !important;
+      width: auto;
+
+      & > :first-child {
+        margin-top: 0 !important;
+        margin-inline-start: var(--space-xs, 8px);
+      }
+    }
+
+    & [class*="folderHeaderSmall_"] {
+      margin: 0 calc((var(--guildbar-avatar-size) - var(--guildbar-folder-size)) / 2);
+    }
+
+    /* Collapsed groups keep their servers hidden. */
+    &:not([class*="isExpanded_"]) [class*="folderGuildsList_"] {
+      display: none;
+    }
+
+    /* Breathing room between one expanded group and the next. */
+    &[class*="isExpanded_"] {
+      margin-inline: var(--hb-folder-group-gap);
+
+      &:first-child {
+        margin-inline-start: 0;
+      }
+      &:last-child {
+        margin-inline-end: 0;
+      }
+      /* Pad the background so it hugs the icons evenly. */
+      & [class*="folderGroupBackground_"] {
+        inset-inline: calc(var(--hb-folder-group-gap) * -0.5);
+      }
+    }
+  }
+
+  /* Drop indicators, redrawn for a row: the insert line becomes a
+     vertical bar in the gap, the "drop onto" circle centres on the
+     icon, and the end-of-folder slot opens sideways. */
+  & [class*="target_"][class*="dragOver_"]::before {
+    width: 4px;
+    height: auto;
+    top: 16px;
+    bottom: 16px;
+    inset-inline: 10px auto;
+  }
+  & [class*="centerTarget_"][class*="dragOver_"]::before {
+    top: 0;
+    bottom: 0;
+    margin: auto 0;
+    inset-inline-start: 28px;
+  }
+  & [class*="folderEndWrapper_"] {
+    width: 0;
+    height: auto;
+
+    &[class*="wrapperOver_"] {
+      width: 24px;
+      height: auto;
+    }
+  }
+  & [class*="folderTarget_"] {
+    flex-direction: row;
+    width: 24px;
+    height: auto;
+    top: 0;
+    bottom: 0;
+    inset-inline: -24px auto;
+
+    & [class*="dragOver_"]::before {
+      top: 16px;
+      bottom: 16px;
+      inset-inline: auto 0;
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     "More mentions that way" markers, pinned to the ends of the bar
+     --------------------------------------------------------------- */
+  & [class*="unreadMentionsIndicatorTop_"],
+  & [class*="unreadMentionsIndicatorBottom_"] {
+    top: 0;
+    bottom: 0;
+    width: auto !important;
+    height: 100%;
+    display: var(--hb-mention-markers);
+    align-items: center;
+    padding: 0 8px !important;
+  }
+  & [class*="unreadMentionsIndicatorTop_"] {
+    inset-inline: 0 auto;
+  }
+  & [class*="unreadMentionsIndicatorBottom_"] {
+    inset-inline: auto 0;
+  }
+  /* Keep the end marker clear of the user panel when it sits in the
+     bar. Scoped off the nav, since the BetterFolders row has its own. */
+  @container style(--hb-user-panel: bar) {
+    &:not(.vc-betterFolders-sidebar nav) [class*="unreadMentionsIndicatorBottom_"] {
+      inset-inline-end: calc(var(--hb-user-panel-width) + var(--custom-panels-spacing, 8px) * 2);
+    }
+  }
+  & [class*="unreadMentionsFixedFooter_"] {
+    bottom: auto;
+    inset-inline-end: 0;
+  }
+
+  /* Footer buttons (Discover, Add a Server, notification centre). */
+  & [class*="bottomRailNotifCenterButton_"] {
+    padding: 0 12px 0 8px;
+
+    &::before {
+      display: none;
     }
   }
 }
