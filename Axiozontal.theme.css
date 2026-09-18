@@ -1,7 +1,7 @@
 /**
  * @name Axiozontal
  * @author AlarkiusEJ
- * @version 0.3.0
+ * @version 0.4.0
  * @description Moves the Discord server list into a horizontal bar at the top (or bottom) of the window. Built from scratch on Discord's own grid layout: no rotation hacks, so tooltips, drag-to-reorder, folders and scrolling keep working.
  * @source https://github.com/AlarkiusJay/VencordAxiozontal
  */
@@ -79,6 +79,10 @@
 
   /* Width of the user panel when it sits in the bar. */
   --hb-user-panel-width: 320px;
+
+  /* Discord's Quests promo bar that pops out of the user panel
+     ("Ready when you are…").  none | block */
+  --hb-quest-bar: none;
 }
 
 /* =====================================================================
@@ -176,6 +180,17 @@
        so pin them back to the channel list's width. */
     & > [class*="panels_"] {
       width: calc(var(--hb-channel-list-width) - var(--custom-panels-spacing, 8px) * 2) !important;
+
+      /* Quests promo bar. Discord mounts it inside the panel, above
+         the account row, and squares that row's top corners while it
+         is showing. Hide the bar and give the corners back. */
+      & > :has(> [data-testid="quest-bar-container"]) {
+        display: var(--hb-quest-bar);
+      }
+      & [class*="containerQuestBarVisible_"] {
+        border-start-start-radius: 7px;
+        border-start-end-radius: 7px;
+      }
     }
     &::after {
       inset-inline: 0 auto;

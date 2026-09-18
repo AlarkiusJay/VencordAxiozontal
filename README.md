@@ -45,6 +45,7 @@ Edit the `:root` block at the top of the file.
 | `--hb-mention-markers` | `none` | `flex` shows Discord's "new mentions further along" markers at the ends of the bar |
 | `--hb-user-panel` | `bar` | `bar` puts the user panel at the right end of the server bar, `sidebar` leaves it under the channel list |
 | `--hb-user-panel-width` | `320px` | Width of the user panel when it sits in the bar |
+| `--hb-quest-bar` | `none` | `block` shows Discord's Quests promo bar that pops out of the user panel |
 
 ## How it survives Discord updates
 
@@ -69,6 +70,7 @@ Each release is tagged and records the Discord build it was verified against. Bu
 
 | Theme | Discord build | Notes |
 |---|---|---|
+| v0.4.0 | `2ae1bc12` (desktop 1.0.9258) | Hide the Quests promo bar in the user panel |
 | v0.3.0 | `fd720496` (desktop 1.0.9257) | Selector rewrite: 70% fewer wildcard matches, same rendering |
 | v0.2.0 | `fd720496` (desktop 1.0.9257) | User panel in the bar, corner unread dots, horizontal drag-and-drop, folder spacing |
 | v0.1.0 | `fd720496` (desktop 1.0.9257) | First release |
